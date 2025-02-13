@@ -12,25 +12,17 @@
 #include "dht.h"
 #include "rgb_digital.h"
 #include "mpu6050.h"
+#include "buzzer.h"
 
 #include "http_request.h"
 #include "wifi_manager.h"
 
-#define BUZZER_PIN 21
 
 static const dht_model_t DHT_MODEL = DHT11;
 static const uint DATA_PIN = 17;
 
 ssd1306_t oled; 
 
-void init_buzzer(uint pin) {
-    gpio_set_function(pin, GPIO_FUNC_PWM);
-    uint slice_num = pwm_gpio_to_slice_num(pin);
-    pwm_config config = pwm_get_default_config();
-    pwm_config_set_clkdiv(&config, 4.0f); // Ajusta divisor de clock
-    pwm_init(slice_num, &config, true);
-    pwm_set_gpio_level(pin, 0); // Desliga o PWM inicialmente
-}
 
 void init_oled() {
     //Inicialização do I2c
@@ -45,19 +37,6 @@ void init_oled() {
     ssd1306_clear(&oled); 
     ssd1306_show(&oled); 
 } 
-
-void play_tone(uint pin, uint frequency, uint duration_ms) {
-    uint slice_num = pwm_gpio_to_slice_num(pin);
-    uint32_t clock_freq = clock_get_hz(clk_sys);
-    uint32_t top = clock_freq / frequency - 1;
-
-    pwm_set_wrap(slice_num, top);
-    pwm_set_gpio_level(pin, top / 2); // 50% de duty cycle
-
-    sleep_ms(duration_ms);
-
-    pwm_set_gpio_level(pin, 0); // Desliga o som após a duração
-}
 
 void draw_phrase(const char* text) {
 
@@ -76,7 +55,7 @@ int main(void){
     stdio_init_all();
 
     init_oled();
-    init_buzzer(BUZZER_PIN);
+    init_buzzer();
     init_RGB();
     init_sr04();
     init_mpu6050();
@@ -84,14 +63,10 @@ int main(void){
     sleep_ms(5000);
 
 
-    // dht_t dht;
-    // dht_init(&dht, DHT_MODEL, pio0, DATA_PIN, true /* pull_up */);
-
-    // change_color(U32_GREEN);
+    dht_t dht;
+    dht_init(&dht, DHT_MODEL, pio0, DATA_PIN, true /* pull_up */);
     
     draw_phrase("Iniciando");
-    // sleep_ms(5000);
-    // change_color(U32_RED);
 
     // wifi_start(WIFI_SSID,WIFI_PASSWORD);
     draw_phrase("Connectado");
