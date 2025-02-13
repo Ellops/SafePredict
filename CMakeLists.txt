@@ -79,11 +79,16 @@ pico_enable_stdio_usb(SafePredict 1)
 add_subdirectory(libs/pico_http_request)
 add_subdirectory(libs/pico_wifi_manager)
 add_subdirectory(libs/pico-ssd1306)
+add_subdirectory(libs/dht)
 
 target_link_libraries(SafePredict
             pico_stdlib
-            pico_ssd1306
+            hardware_clocks
+            hardware_pwm
 
+            pico_ssd1306 
+            dht         
+            
             pico_wifi_manager
             pico_http_request
             )
