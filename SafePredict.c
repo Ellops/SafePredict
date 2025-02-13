@@ -1,4 +1,4 @@
-#include "oledconfig.h"
+#include "main_config.h"
 
 #include "pico/stdlib.h"
 #include "hardware/pwm.h"
@@ -7,7 +7,8 @@
 #include "hardware/i2c.h"
 
 #include "ssd1306.h"
-#include <dht.h>
+#include "distance_sr04.h"
+#include "dht.h"
 
 #include "http_request.h"
 #include "wifi_manager.h"
@@ -243,56 +244,18 @@ static void mpu6050_read_raw(int16_t accel[3], int16_t gyro[3], int16_t *temp) {
 //     return 0;
 // }
 
-#define TRIG_PIN 16
-#define ECHO_PIN 18
 
-void measure_distance() {
-    gpio_put(TRIG_PIN, 1);
-    sleep_us(10);
-    gpio_put(TRIG_PIN, 0);
-
-    // Wait for the echo pin to go high
-    absolute_time_t start_wait = get_absolute_time();
-    while (!gpio_get(ECHO_PIN)) {
-        if (absolute_time_diff_us(start_wait, get_absolute_time()) > 1000000) {
-            printf("Error: No echo received\n");
-            return;
-        }
-    }
-
-    // Measure the duration of the high signal
-    absolute_time_t start_time = get_absolute_time();
-    while (gpio_get(ECHO_PIN)) {
-        if (absolute_time_diff_us(start_time, get_absolute_time()) > 26100) {
-            printf("Distance too far\n");
-            return;
-        }
-    }
-    absolute_time_t end_time = get_absolute_time();
-
-    // Compute pulse duration
-    int64_t pulse_length = absolute_time_diff_us(start_time, end_time);
-
-    // Convert to distance (speed of sound = 343m/s = 0.0343 cm/us, distance = (time * speed) / 2)
-    float distance_cm = pulse_length * 0.0343 / 2;
-
-    printf("Distance: %.2f cm\n", distance_cm);
-}
 
 int main() {
     stdio_init_all();
 
-    gpio_init(TRIG_PIN);
-    gpio_init(ECHO_PIN);
-
-    gpio_set_dir(TRIG_PIN, GPIO_OUT);
-    gpio_set_dir(ECHO_PIN, GPIO_IN);
-
-    gpio_put(TRIG_PIN, 0);
-    sleep_ms(100); // Let sensor stabilize
+    init_sr04();
 
     while (1) {
-        measure_distance();
+        if(alarm_distance()){
+            printf("Alarme\n");
+        }
+        
         sleep_ms(100);
     }
 }
