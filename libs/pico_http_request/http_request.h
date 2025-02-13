@@ -4,18 +4,17 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
- #ifndef EXAMPLE_HTTP_CLIENT_UTIL_H
- #define EXAMPLE_HTTP_CLIENT_UTIL_H
+ #ifndef HTTP_REQUEST_H
+ #define HTTP_REQUEST_H
  
  #include "lwip/apps/http_client.h"
+ #include <string.h>
  
  /*! \brief Parameters used to make HTTP request
   *  \ingroup pico_lwip
   */
- typedef struct EXAMPLE_HTTP_REQUEST {
-     /*!
-      * The name of the host, e.g. www.raspberrypi.com
-      */
+ typedef struct HTTP_REQUEST {
+
      const char *hostname;
      /*!
       * The url to request, e.g. /favicon.ico
@@ -68,7 +67,7 @@
       */
      httpc_result_t result;
  
- } EXAMPLE_HTTP_REQUEST_T;
+ } HTTP_REQUEST_T;
  
  struct async_context;
  
@@ -84,7 +83,7 @@
   *
   * @see async_context
   */
- int http_client_request_async(struct async_context *context, EXAMPLE_HTTP_REQUEST_T *req);
+ int http_client_request_async(struct async_context *context, HTTP_REQUEST_T *req);
  
  /*! \brief Perform a http request synchronously
   *  \ingroup pico_lwip
@@ -95,7 +94,7 @@
   * @param req HTTP request parameters. As a minimum this should be initialised to zero with hostname and url set to valid values
   * @param result Returns the overall result of the http request when complete. Zero indicates success.
   */
- int http_client_request_sync(struct async_context *context, EXAMPLE_HTTP_REQUEST_T *req);
+ int http_client_request_sync(struct async_context *context, HTTP_REQUEST_T *req);
  
  /*! \brief A http header callback that can be passed to \em http_client_init or \em http_client_init_secure
   *  \ingroup pico_http_client
@@ -123,5 +122,7 @@
   */
  err_t http_client_receive_print_fn(void *arg, struct altcp_pcb *conn, struct pbuf *p, err_t err);
  
+ int thing_send(int field,char* data);
+
  #endif
  

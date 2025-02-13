@@ -1,25 +1,22 @@
- #include "pico/cyw43_arch.h"
- #include "pico/stdlib.h"
+#include "pico/stdlib.h"
+#include "http_request.h"
+#include "wifi_manager.h"
  
+#define URL_REQUEST "/update?api_key=&field1="
+
  int main(void)
  {
     stdio_init_all();
     sleep_ms(5000);
-    
-    if (cyw43_arch_init()) {
-        printf("failed to initialise\n");
-    }
 
-    cyw43_arch_enable_sta_mode();
-    printf("Connecting to Wi-Fi...\n");
-    if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-        printf("failed to connect.\n");
-        exit(1);
-    } else {
-        printf("Connected.\n");
-    }
+    wifi_start(WIFI_SSID,WIFI_PASSWORD);
 
-    cyw43_arch_deinit();
+    thing_send(2,"35");
+    sleep_ms(16000);
+    thing_send(1,"25");
+
+    sleep_ms(100);
+    wifi_end();
     return 0;
  }
  

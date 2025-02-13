@@ -25,7 +25,7 @@ endif()
 # ====================================================================================
 set(PICO_BOARD pico_w CACHE STRING "Board type")
 
-set(PICO_DISABLE_LWIP_TLS ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
@@ -49,11 +49,20 @@ if(EXISTS ${ENV_FILE})
 
     string(REGEX MATCH "WIFI_PASSWORD=\"([^\"]+)\"" _ ${ENV_CONTENTS})
     set(WIFI_PASSWORD ${CMAKE_MATCH_1})
+
+    string(REGEX MATCH "THINGSPEAK_API_KEY=\"([^\"]+)\"" _ ${ENV_CONTENTS})
+    set(THINGSPEAK_API_KEY ${CMAKE_MATCH_1})
+
+    # Extract SAFEPREDICT_DEBUG_MODE (Integer/Boolean without quotes)
+    string(REGEX MATCH "SAFEPREDICT_DEBUG_MODE=([0-9]+)" _ ${ENV_CONTENTS})
+    set(SAFEPREDICT_DEBUG_MODE ${CMAKE_MATCH_1})
 endif()
 
 target_compile_definitions(SafePredict PRIVATE
         WIFI_SSID=\"${WIFI_SSID}\"
         WIFI_PASSWORD=\"${WIFI_PASSWORD}\"
+        THINGSPEAK_API_KEY=\"${THINGSPEAK_API_KEY}\"
+        SAFEPREDICT_DEBUG_MODE=${SAFEPREDICT_DEBUG_MODE}
         )
 
 pico_set_program_name(SafePredict "SafePredict")
@@ -68,13 +77,12 @@ pico_enable_stdio_uart(SafePredict 0)
 pico_enable_stdio_usb(SafePredict 1)
 
 add_subdirectory(libs/pico_http_request)
+add_subdirectory(libs/pico_wifi_manager)
+
 
 target_link_libraries(SafePredict
             pico_stdlib
-            pico_lwip_http
-            pico_lwip_mbedtls
-            pico_mbedtls
-            pico_cyw43_arch_lwip_threadsafe_background
+            pico_wifi_manager
             pico_http_request
             )
 
