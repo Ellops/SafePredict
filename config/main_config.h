@@ -19,3 +19,4 @@
 */
 #define GET_CENTER_LINE(text_length) \
     ((OLED_WIDTH - (text_length) * ((FONT_WIDTH) + (SPACING))) / 2)
+    

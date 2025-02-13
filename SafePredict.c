@@ -10,29 +10,18 @@
 #include "ssd1306.h"
 #include "distance_sr04.h"
 #include "dht.h"
+#include "rgb_digital.h"
+#include "mpu6050.h"
 
 #include "http_request.h"
 #include "wifi_manager.h"
 
 #define BUZZER_PIN 21
 
-#define RED_PIN 13
-#define GREEN_PIN 11
-#define BLUE_PIN 12
-
 static const dht_model_t DHT_MODEL = DHT11;
 static const uint DATA_PIN = 17;
 
-#define URGB_U32(r, g, b) \
-    ((uint32_t)((r) << 8) | \
-     (uint32_t)((g) << 16) | \
-     (uint32_t)(b))
-
-#define U32_RED URGB_U32(0xFF, 0, 0)
-#define U32_YELLOW URGB_U32(0xFF, 0xFF, 0)
-#define U32_GREEN URGB_U32(0, 0xFF, 0)
-
-ssd1306_t oled; //Estrutura de dados do oled
+ssd1306_t oled; 
 
 void init_buzzer(uint pin) {
     gpio_set_function(pin, GPIO_FUNC_PWM);
@@ -56,25 +45,6 @@ void init_oled() {
     ssd1306_clear(&oled); 
     ssd1306_show(&oled); 
 } 
-
-void init_RGB(){
-    gpio_init(RED_PIN);
-    gpio_set_dir(RED_PIN, GPIO_OUT);
-    gpio_init(GREEN_PIN);
-    gpio_set_dir(GREEN_PIN, GPIO_OUT);
-    gpio_init(BLUE_PIN);
-    gpio_set_dir(BLUE_PIN, GPIO_OUT);
-}
-
-void change_color(uint32_t color){
-    uint8_t red = (color >> 8) & 0xFF;
-    uint8_t green = (color >> 16) & 0xFF;
-    uint8_t blue = color & 0xFF;
-
-    gpio_put(RED_PIN, red); 
-    gpio_put(GREEN_PIN, green);
-    gpio_put(BLUE_PIN, blue);
-}
 
 void play_tone(uint pin, uint frequency, uint duration_ms) {
     uint slice_num = pwm_gpio_to_slice_num(pin);
@@ -101,8 +71,6 @@ void draw_phrase(const char* text) {
    
     ssd1306_show(&oled); 
 }
-
-
 
 int main(void){
     stdio_init_all();
@@ -177,7 +145,10 @@ int main(void){
         printf("Temp. = %f\n", (temp / 340.0) + 36.53);
         
         if(alarm_distance()){
-            printf("Alarme\n");
+            change_color(U32_RED);
+        }
+        else{
+            change_color(U32_GREEN);
         }
 
         sleep_ms(1000);

@@ -78,8 +78,10 @@ pico_enable_stdio_usb(SafePredict 1)
 
 add_subdirectory(libs/pico_http_request)
 add_subdirectory(libs/pico_wifi_manager)
+
 add_subdirectory(libs/pico_sr04)
 add_subdirectory(libs/pico_mpu6050)
+add_subdirectory(libs/pico_rgb_digital)
 
 add_subdirectory(libs/pico-ssd1306)
 add_subdirectory(libs/dht)
@@ -91,6 +93,7 @@ target_link_libraries(SafePredict
 
             pico_ssd1306
             pico_mpu6050
+            pico_rgb_digital
             dht         
             
             pico_wifi_manager
