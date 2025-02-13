@@ -27,7 +27,6 @@ float measure_distance() {
     absolute_time_t start_wait = get_absolute_time();
     while (!gpio_get(ECHO_PIN)) {
         if (absolute_time_diff_us(start_wait, get_absolute_time()) > 1000000) {
-            printf("Error: No echo received\n");
             return -1;
         }
     }
