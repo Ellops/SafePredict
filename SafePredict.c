@@ -4,8 +4,10 @@
 #include "hardware/pwm.h"
 #include "hardware/clocks.h"
 #include "hardware/i2c.h"
+#include "hardware/adc.h"
 #include "pico/binary_info.h"
 
+#include "math.h"
 
 #include "ssd1306.h"
 #include "distance_sr04.h"
@@ -17,12 +19,7 @@
 #include "http_request.h"
 #include "wifi_manager.h"
 
-
-static const dht_model_t DHT_MODEL = DHT11;
-static const uint DATA_PIN = 17;
-
 ssd1306_t oled; 
-
 
 void init_oled() {
     //Inicialização do I2c
@@ -51,32 +48,134 @@ void draw_phrase(const char* text) {
     ssd1306_show(&oled); 
 }
 
+const dht_model_t DHT_MODEL = DHT11;
+const uint DHT_DATA_PIN = 17;
+
+dht_t dht;
+
+#if defined(SAFEPREDICT_ONLY_BITDOG_MODE)
+    void update_dht() {
+        float humidity_increment = ((rand() % 21) - 10) / 10.0;  // Random increment between -1.0 and 1.0
+        float temperature_increment = ((rand() % 21) - 10) / 10.0; // Random increment between -1.0 and 1.0
+    
+        
+        float humidity = smoothed_humidity + humidity_increment;
+        float temperature = smoothed_temperature + temperature_increment;
+    
+        if (humidity < 0) humidity = 0;
+        if (humidity > 100) humidity = 100;       
+
+        dht_result_t result = DHT_RESULT_OK
+        if (result == DHT_RESULT_OK) {
+            temperature_buffer[temperature_index_window] = temperature_c;
+            temperature_index_window = (temperature_index_window + 1) % DHT_WINDOW_SIZE;
+        
+            float sum = 0;
+            for (int i = 0; i < DHT_WINDOW_SIZE; i++) {
+                sum += temperature_buffer[i];
+            }
+            smoothed_temperature = sum / DHT_WINDOW_SIZE;
+
+            humidity_buffer[humidity_index_window] = humidity;
+            humidity_index_window = (humidity_index_window + 1) % DHT_WINDOW_SIZE;
+        
+            sum = 0;
+            for (int i = 0; i < DHT_WINDOW_SIZE; i++) {
+                sum += humidity_buffer[i];
+            }
+            smoothed_humidity = sum / DHT_WINDOW_SIZE;
+        }
+    }
+
+    void update_current(){
+        float current_increment = ((rand() % 21) - 10) / 10.0;
+        uint16_t current = smoothed_current + current_increment;
+        
+        current_buffer[current_index_window] = current;
+        current_index_window = (current_index_window + 1) % CURRENT_WINDOW_SIZE;
+
+        float sum = 0;
+        for (int i = 0; i < CURRENT_WINDOW_SIZE; i++) {
+            sum += current_buffer[i];
+        }
+        smoothed_current = sum / CURRENT_WINDOW_SIZE;
+
+    }
+
+#else
+    void update_dht() {
+        dht_start_measurement(&dht);
+        
+        float humidity;
+        float temperature_c;
+        dht_result_t result = dht_finish_measurement_blocking(&dht, &humidity, &temperature_c);
+        if (result == DHT_RESULT_OK) {
+            temperature_buffer[temperature_index_window] = temperature_c;
+            temperature_index_window = (temperature_index_window + 1) % DHT_WINDOW_SIZE;
+        
+            float sum = 0;
+            for (int i = 0; i < DHT_WINDOW_SIZE; i++) {
+                sum += temperature_buffer[i];
+            }
+            smoothed_temperature = sum / DHT_WINDOW_SIZE;
+
+            humidity_buffer[humidity_index_window] = humidity;
+            humidity_index_window = (humidity_index_window + 1) % DHT_WINDOW_SIZE;
+        
+            sum = 0;
+            for (int i = 0; i < DHT_WINDOW_SIZE; i++) {
+                sum += humidity_buffer[i];
+            }
+            smoothed_humidity = sum / DHT_WINDOW_SIZE;
+            
+        } else if (result == DHT_RESULT_TIMEOUT) {
+            puts("DHT sensor not responding. Please check your wiring.");
+        } else {
+            assert(result == DHT_RESULT_BAD_CHECKSUM);
+            puts("Bad checksum");
+        }
+    }
+
+    void update_current(){
+        adc_select_input(ADC_CHANNEL_2);
+        sleep_us(2);
+        uint16_t current = adc_read();
+        
+        current_buffer[current_index_window] = current;
+        current_index_window = (current_index_window + 1) % CURRENT_WINDOW_SIZE;
+
+        float sum = 0;
+        for (int i = 0; i < CURRENT_WINDOW_SIZE; i++) {
+            sum += current_buffer[i];
+        }
+        smoothed_current = sum / CURRENT_WINDOW_SIZE;
+
+    }
+#endif
+
 int main(void){
     stdio_init_all();
 
+    printf("Starting All\n");
     init_oled();
     init_buzzer();
     init_RGB();
     init_sr04();
     init_mpu6050();
-
-    sleep_ms(5000);
-
-
-    dht_t dht;
-    dht_init(&dht, DHT_MODEL, pio0, DATA_PIN, true /* pull_up */);
+    dht_init(&dht, DHT_MODEL, pio0, DHT_DATA_PIN, true /* pull_up */);
+    printf("All started\n");
     
-    draw_phrase("Iniciando");
+    adc_init();
+    adc_gpio_init(CURRENT_PIN);
 
     // wifi_start(WIFI_SSID,WIFI_PASSWORD);
-    draw_phrase("Connectado");
+
     // play_tone(BUZZER_PIN,400,800);
     
     // thing_send(2,"22");
-    draw_phrase("Thing 2 Enviado");
+
     // change_color(U32_YELLOW);
     // sleep_ms(45000);
-    draw_phrase("Thing 1 Enviado");
     // thing_send(1,"13");
 
     
@@ -84,41 +183,17 @@ int main(void){
     // change_color(U32_RED);
     // draw_phrase("Finalizado");
 
-    // while(true){
-    //     dht_start_measurement(&dht);
-    
-    //     float humidity;
-    //     float temperature_c;
-    //     dht_result_t result = dht_finish_measurement_blocking(&dht, &humidity, &temperature_c);
-    //     if (result == DHT_RESULT_OK) {
-    //         printf("%.1f C , %.1f%% humidity\n", temperature_c, humidity);
-    //     } else if (result == DHT_RESULT_TIMEOUT) {
-    //         puts("DHT sensor not responding. Please check your wiring.");
-    //     } else {
-    //         assert(result == DHT_RESULT_BAD_CHECKSUM);
-    //         puts("Bad checksum");
-    //     }
-    //     sleep_ms(2000);
-    // }
-
-
     mpu6050_reset();
 
-    int16_t acceleration[3], gyro[3], temp;
-
     while (1) {
-        draw_phrase("1");
-        sleep_ms(1000);
-        mpu6050_read_raw(acceleration, gyro, &temp);
-        draw_phrase("2");
-        // These are the raw numbers from the chip, so will need tweaking to be really useful.
-        // See the datasheet for more information
-        printf("Acc. X = %d, Y = %d, Z = %d\n", acceleration[0], acceleration[1], acceleration[2]);
-        printf("Gyro. X = %d, Y = %d, Z = %d\n", gyro[0], gyro[1], gyro[2]);
-        // Temperature is simple so use the datasheet calculation to get deg C.
-        // Note this is chip temperature.
-        printf("Temp. = %f\n", (temp / 340.0) + 36.53);
-        
+
+        update_vibration();
+        printf("Vibration:%f\n",smoothed_vibration);
+        update_dht();
+        printf("Temperature:%f,Humidity:%f\n",smoothed_temperature,smoothed_humidity);
+        update_current();
+        printf("Current:%f\n",smoothed_current);
+
         if(alarm_distance()){
             change_color(U32_RED);
         }
@@ -126,7 +201,7 @@ int main(void){
             change_color(U32_GREEN);
         }
 
-        sleep_ms(1000);
+        sleep_ms(500);
     }
 
     // wifi_end();

@@ -19,4 +19,21 @@
 */
 #define GET_CENTER_LINE(text_length) \
     ((OLED_WIDTH - (text_length) * ((FONT_WIDTH) + (SPACING))) / 2)
-    
+
+#define DHT_WINDOW_SIZE 10
+#define CURRENT_WINDOW_SIZE 10
+
+const int CURRENT_PIN = 28;
+const int ADC_CHANNEL_2 = 2;
+
+float temperature_buffer[DHT_WINDOW_SIZE] = {0};
+int temperature_index_window = 0;
+float humidity_buffer[DHT_WINDOW_SIZE] = {0};
+int humidity_index_window = 0;
+float current_buffer[CURRENT_WINDOW_SIZE] = {0};
+int current_index_window = 0;
+
+float smoothed_temperature = 0.0;
+float smoothed_humidity = 0.0;
+float smoothed_current = 0.0;
+

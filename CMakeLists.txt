@@ -53,8 +53,10 @@ if(EXISTS ${ENV_FILE})
     string(REGEX MATCH "THINGSPEAK_API_KEY=\"([^\"]+)\"" _ ${ENV_CONTENTS})
     set(THINGSPEAK_API_KEY ${CMAKE_MATCH_1})
 
-    # Extract SAFEPREDICT_DEBUG_MODE (Integer/Boolean without quotes)
     string(REGEX MATCH "SAFEPREDICT_DEBUG_MODE=([0-9]+)" _ ${ENV_CONTENTS})
+    set(SAFEPREDICT_DEBUG_MODE ${CMAKE_MATCH_1})
+
+    string(REGEX MATCH "SAFEPREDICT_ONLY_BITDOG_MODE=([0-9]+)" _ ${ENV_CONTENTS})
     set(SAFEPREDICT_DEBUG_MODE ${CMAKE_MATCH_1})
 endif()
 
@@ -63,6 +65,7 @@ target_compile_definitions(SafePredict PRIVATE
         WIFI_PASSWORD=\"${WIFI_PASSWORD}\"
         THINGSPEAK_API_KEY=\"${THINGSPEAK_API_KEY}\"
         SAFEPREDICT_DEBUG_MODE=${SAFEPREDICT_DEBUG_MODE}
+        SAFEPREDICT_ONLY_BITDOG_MODE=${SAFEPREDICT_ONLY_BITDOG_MODE}
         )
 
 pico_set_program_name(SafePredict "SafePredict")
@@ -91,6 +94,7 @@ target_link_libraries(SafePredict
             pico_stdlib
             hardware_clocks
             hardware_pwm
+            hardware_adc
 
             pico_ssd1306
             pico_mpu6050
