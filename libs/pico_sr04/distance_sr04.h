@@ -2,10 +2,12 @@
  #define DISTANCE_SR04_H
  
  #include "pico/stdlib.h"
- 
-bool init_sr04();
-float measure_distance();
-bool alarm_distance();
+ /*
+    Criando funções simples e intuitivas para o sensor de distancia
+*/
+bool init_sr04(); //Inicialações necessárias ao sensor
+float measure_distance();//Função que mede a distância
+bool alarm_distance();//Função que alerta caso um limite seja atingido pela distância
 
  #endif
  

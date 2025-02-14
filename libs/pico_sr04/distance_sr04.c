@@ -5,12 +5,15 @@
 #include "hardware/gpio.h"
 #include "pico/time.h"
 
-#define TRIG_PIN 16
-#define ECHO_PIN 18
+#define TRIG_PIN 16 //Pino que enviará o sinal
+#define ECHO_PIN 18 //Pino que recebe a resposta que poderemos medir o tempo
 
-#define TRIGGER_SCALE 12
+#define TRIGGER_SCALE 12 //Distância em centímetros que alarmará
 
 bool init_sr04(){
+    /*
+        Inicia os pinos nas posições corretas
+    */
     gpio_init(TRIG_PIN);
     gpio_init(ECHO_PIN);
 
@@ -19,6 +22,9 @@ bool init_sr04(){
     return true;
 }
 
+/*
+    Calculando a velocidade do som se mede a distância de algum obstáculo
+*/
 float measure_distance() {
     gpio_put(TRIG_PIN, 1);
     sleep_us(10);
@@ -41,7 +47,7 @@ float measure_distance() {
 
     int64_t pulse_length = absolute_time_diff_us(start_time, end_time);
 
-    float distance_cm = pulse_length * 0.0343 / 2;
+    float distance_cm = pulse_length * 0.0343 / 2; //Metade da velocidade do som pelo tamanho do pulso
 
     return distance_cm;
 }

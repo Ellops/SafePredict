@@ -1,3 +1,8 @@
+/*
+    É necessario colocar credenciais WIFI e thingspeak no config/.env e recompilar
+*/
+
+
 #include "main_config.h" //Arquivo com definições referentes a este arquivo principal
 
 /*

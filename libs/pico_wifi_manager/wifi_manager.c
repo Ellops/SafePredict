@@ -1,9 +1,10 @@
 #include "wifi_manager.h"
 
-#define CONNECTION_CHECK_TIME 5000
+bool is_connected = false; //definição flag
 
-bool is_connected = false;
-
+/*
+    Função local para conectar ao wifi
+*/
 static bool wifi_connect(const char* WIFI, const char* PASSWORD){
     if (cyw43_arch_wifi_connect_timeout_ms(WIFI, PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 10000)) {
         is_connected = false;
@@ -14,7 +15,9 @@ static bool wifi_connect(const char* WIFI, const char* PASSWORD){
     printf("Connected.\n");
     return true;
 }
-
+/*
+    Função global para iniciar e conectar ao wifi
+*/
 bool wifi_start(const char* WIFI, const char* PASSWORD){
     if (cyw43_arch_init()) {
         printf("failed to initialise\n");
@@ -26,6 +29,9 @@ bool wifi_start(const char* WIFI, const char* PASSWORD){
     return wifi_connect(WIFI,PASSWORD);
 }
 
+/*
+    Função para finalizar o wifi
+*/
 bool wifi_end(){
     cyw43_arch_deinit();
     return true;
