@@ -11,22 +11,27 @@
 #include "lwip/altcp_tls.h"
 #include "http_request.h"
 
+/*
+    bibliotecas de controle de ip
+*/
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
 #include "lwip/dns.h"
 #include "lwip/init.h"
 
- #define DEBUG_MODE_HTTP 1
 
-// Send Data to ThingSpeak through http
+/*
+    Definições locais para o thingspeak
+*/
 
 struct tcp_pcb *tcp_client_pcb;
 ip_addr_t server_ip;
 
-#define THINGSPEAK_PORT 80
-#define THINGSPEAK_HOST "api.thingspeak.com"
+#define DEBUG_MODE_HTTP 1 //Modo de debug
+#define THINGSPEAK_PORT 80 //Porta de envio de dados
+#define THINGSPEAK_HOST "api.thingspeak.com" // api a enviar os dados
 
-// Callback quando recebe resposta do ThingSpeak
+// Callback que trata resposta thingspeak
 static err_t http_recv_callback(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
     if (p == NULL) {
         tcp_close(tpcb);
@@ -37,7 +42,7 @@ static err_t http_recv_callback(void *arg, struct tcp_pcb *tpcb, struct pbuf *p,
     return ERR_OK;
 }
 
-
+// Callback que faz a comunicação após receber DNS
 static err_t http_connected_callback(void *arg, struct tcp_pcb *tpcb, err_t err) {
     if (err != ERR_OK) {
         printf("Erro na conexão TCP\n");
@@ -47,12 +52,13 @@ static err_t http_connected_callback(void *arg, struct tcp_pcb *tpcb, err_t err)
 
     printf("Conectado ao ThingSpeak!\n");
 
-    queue_entry_t *req = (queue_entry_t *)arg;
+    queue_entry_t *req = (queue_entry_t *)arg; //Leitura do argumento extra
     if (req == NULL) {
         printf("Erro: Dados inválidos\n");
         return ERR_ARG;
     }
 
+    //Construção do requerimento GET
     char request[256];
     snprintf(request, sizeof(request),
         "GET /update?api_key=%s&field%u=%.3f HTTP/1.1\r\n"
@@ -70,7 +76,7 @@ static err_t http_connected_callback(void *arg, struct tcp_pcb *tpcb, err_t err)
     return ERR_OK;
 }
 
-
+//Callback dns
 static void dns_callback(const char *name, const ip_addr_t *ipaddr, void *callback_arg) {
     if (ipaddr) {
         printf("Endereço IP do ThingSpeak: %s\n", ipaddr_ntoa(ipaddr));
@@ -83,9 +89,11 @@ static void dns_callback(const char *name, const ip_addr_t *ipaddr, void *callba
     }
 }
 
-
+/*
+    Função para enviar dados para o thingspeak de forma simplificada
+*/
 int thing_send(queue_entry_t data_send) {
-    queue_entry_t *req = malloc(sizeof(queue_entry_t));
+    queue_entry_t *req = malloc(sizeof(queue_entry_t)); //Alocação de memoria para o requerimento
     if (!req) {
         printf("Erro: Falha ao alocar memória para a requisição\n");
         return -1;

@@ -8,8 +8,11 @@
     #define SAFEPREDICT_ONLY_BITDOG_MODE 0
 #endif
 
+/*
+    Definições do filtro de média móvel para vibração 
+*/
 #define VIBRATION_WINDOW_SIZE 10
-static const int addr = 0x68;
+static const int addr = 0x68; //Endereço i2c do dispositivo
 static float vibration_buffer[VIBRATION_WINDOW_SIZE] = {0};
 static  int vibration_index_window = 0;
 float smoothed_vibration = 0.0;
@@ -23,6 +26,9 @@ bool init_mpu6050(){
     return true;
 }
 
+/*
+    Modo de configuração
+*/
 void mpu6050_reset() {
 
     uint8_t buf[] = {0x6B, 0x80};
@@ -34,17 +40,19 @@ void mpu6050_reset() {
     sleep_ms(10);
 }
 
+/*
+    Leitura Base através de registradores
+*/
 void mpu6050_read_raw(int16_t accel[3], int16_t gyro[3], int16_t *temp) {
 
     uint8_t buffer[6];
-
 
     uint8_t val = 0x3B;
     i2c_write_blocking(i2c0, addr, &val, 1, true);
     i2c_read_blocking(i2c0, addr, buffer, 6, false);
 
     for (int i = 0; i < 3; i++) {
-        accel[i] = (buffer[i * 2] << 8 | buffer[(i * 2) + 1]);
+        accel[i] = (buffer[i * 2] << 8 | buffer[(i * 2) + 1]); //Bit Banging do datasheet
     }
 
 
@@ -64,6 +72,9 @@ void mpu6050_read_raw(int16_t accel[3], int16_t gyro[3], int16_t *temp) {
     *temp = buffer[0] << 8 | buffer[1];
 }
 
+/*
+    Calculo da vibração através dos dados do sensor ou valores aleatórios
+*/
 #if SAFEPREDICT_ONLY_BITDOG_MODE
 void update_vibration() {
     #include <time.h>
@@ -97,7 +108,7 @@ void update_vibration() {
     float ay = (acceleration[1] - 150) / 16384.0;
     float az = (acceleration[2] + 1876) / 16384.0;
 
-    float vibration = sqrt(ax * ax + ay * ay + az * az) - 1.00;
+    float vibration = sqrt(ax * ax + ay * ay + az * az) - 1.00; //gerando modulo da vibração e tirando gravidade
 
     vibration_buffer[vibration_index_window] = vibration;
     vibration_index_window = (vibration_index_window + 1) % VIBRATION_WINDOW_SIZE;

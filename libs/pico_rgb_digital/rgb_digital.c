@@ -1,5 +1,8 @@
 #include "mpu6050.h"
 
+/*
+    Pinos do RGB
+*/
 #define RED_PIN 13
 #define GREEN_PIN 11
 #define BLUE_PIN 12
@@ -14,6 +17,10 @@ void init_RGB(){
 }
 
 void change_color(uint32_t color){
+    /*
+        Reverte a cor para as 3 variaveis em um caso analógico pode gerar qualquer cor
+        neste caso digital podemos apenas simplificar os puts
+    */
     uint8_t red = (color >> 8) & 0xFF;
     uint8_t green = (color >> 16) & 0xFF;
     uint8_t blue = color & 0xFF;
