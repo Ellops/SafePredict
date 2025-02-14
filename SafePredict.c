@@ -6,6 +6,7 @@
 #include "hardware/i2c.h"
 #include "hardware/adc.h"
 #include "pico/binary_info.h"
+#include "pico/util/queue.h"
 
 #include "math.h"
 
@@ -140,7 +141,7 @@ dht_t dht;
     void update_current(){
         adc_select_input(ADC_CHANNEL_2);
         sleep_us(2);
-        uint16_t current = adc_read();
+        uint16_t current = ((adc_read() - 2048) / 2048.0) * 20.0;
         
         current_buffer[current_index_window] = current;
         current_index_window = (current_index_window + 1) % CURRENT_WINDOW_SIZE;
@@ -155,24 +156,86 @@ dht_t dht;
 #endif
 
 bool motor_status = true;
+uint deployed_breaks = 0;
 
 int init_motor(){
-    static const float DIVIDER_PWM = 16.0;
-    static const uint16_t PERIOD = 4096;
-    gpio_set_function(MOTOR_PIN, GPIO_FUNC_PWM);
-    uint slice = pwm_gpio_to_slice_num(MOTOR_PIN);  
-    pwm_set_clkdiv(slice, DIVIDER_PWM); 
-    pwm_set_wrap(slice, PERIOD);          
-    pwm_set_gpio_level(MOTOR_PIN, 0);       
+    gpio_init(MOTOR_PIN);
+    gpio_set_dir(MOTOR_PIN, GPIO_OUT);    
 }
 
-void update_motor(){
+void deploy_break(){
     if(motor_status){
-        pwm_set_gpio_level(MOTOR_PIN, 4096); 
+        gpio_put(MOTOR_PIN,1);
     }
     else{
-        pwm_set_gpio_level(MOTOR_PIN, 0); 
+        gpio_put(MOTOR_PIN,0);
     }
+}
+
+typedef enum {
+    THINGSPEAK_BREAK=1,
+    THINGSPEAK_CURRENT,
+    THINGSPEAK_VIBRATION,
+    THINGSPEAK_TEMPERATURE,
+    THINGSPEAK_HUMIDITY
+} thingspeak_type_t;
+
+typedef struct {
+    thingspeak_type_t type;
+    char value[8];
+} queue_entry_t;
+
+queue_t thingspeak_queue;
+volatile queue_entry_t data_to_send;
+volatile bool send_data = false;
+
+void enqueue_data(thingspeak_type_t type, float value) {
+    queue_entry_t entry;
+    entry.type = type;
+    snprintf(entry.value, sizeof(entry.value), "%.3f", value);
+    if (!queue_try_add(&thingspeak_queue, &entry)) {
+        printf("Queue is full!\n");
+    }
+}
+
+bool enqueue_timer_callback(struct repeating_timer *t) {
+    static int counter = 0;
+    thingspeak_type_t type;
+    float value = 0.0f;
+    switch (counter % 5) {
+        case 0: 
+            type = THINGSPEAK_BREAK; 
+            value = deployed_breaks;
+            if(value){
+                deployed_breaks = 0;
+            }
+            break;
+        case 1:
+            type = THINGSPEAK_CURRENT;
+            value = smoothed_current;
+            break;
+        case 2: 
+            type = THINGSPEAK_VIBRATION; 
+            value = smoothed_vibration;
+            break;
+        case 3: 
+            type = THINGSPEAK_TEMPERATURE;
+            value = smoothed_temperature;
+            break;
+        case 4: 
+            type = THINGSPEAK_HUMIDITY;
+            value = smoothed_humidity;
+            break;
+    }
+    enqueue_data(type, value);
+    counter++;
+    return true;
+}
+
+bool dequeue_timer_callback(struct repeating_timer *t) {
+    queue_try_remove(&thingspeak_queue, &data_to_send);
+    send_data = true;
+    return true;
 }
 
 int main(void){
@@ -191,8 +254,15 @@ int main(void){
     init_motor();
     printf("All started\n");
     
+    queue_init(&thingspeak_queue, sizeof(queue_entry_t), 10);
     adc_init();
     adc_gpio_init(CURRENT_PIN);
+
+    struct repeating_timer enqueue_timer;
+    struct repeating_timer dequeue_timer;
+
+    add_repeating_timer_ms(14999, enqueue_timer_callback, NULL, &enqueue_timer);
+    add_repeating_timer_ms(15000, dequeue_timer_callback, NULL, &dequeue_timer);
 
     // wifi_start(WIFI_SSID,WIFI_PASSWORD);
     
@@ -212,14 +282,11 @@ int main(void){
     while (1) {
 
         update_vibration();
-        printf("Vibration:%f\n",smoothed_vibration);
-        update_dht();
-        printf("Temperature:%f,Humidity:%f\n",smoothed_temperature,smoothed_humidity);
         update_current();
-        printf("Current:%f\n",smoothed_current);
 
         if(alarm_distance()){
-            update_motor();
+            deploy_break();
+            deployed_breaks = 100;
             motor_status = false;
             change_color(U32_RED);
             play_alarm(21,400);
@@ -227,11 +294,15 @@ int main(void){
         else{
             motor_status = true;
             change_color(U32_GREEN);
-            update_motor();
+            deploy_break();
             stop_alarm(21);
         }
-
+        update_dht();
         sleep_ms(500);
+        if(send_data){
+            printf("Sended: Type=%d, Value=%s\n", data_to_send.type, data_to_send.value);
+            send_data=false;
+        }
     }
 
     // wifi_end();
