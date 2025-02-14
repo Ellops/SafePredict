@@ -8,7 +8,7 @@
 #define TRIG_PIN 16
 #define ECHO_PIN 18
 
-#define TRIGGER_SCALE 7
+#define TRIGGER_SCALE 12
 
 bool init_sr04(){
     gpio_init(TRIG_PIN);

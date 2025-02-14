@@ -171,10 +171,10 @@ int init_motor(){
 
 void deploy_break(){
     if(motor_status){
-        gpio_put(MOTOR_PIN,1);
+        gpio_put(MOTOR_PIN,0);
     }
     else{
-        gpio_put(MOTOR_PIN,0);
+        gpio_put(MOTOR_PIN,1);
     }
 }
 
