@@ -1,3 +1,6 @@
+#define SAFEPREDICT_DEBUG_MODE 0
+#define SAFEPREDICT_ONLY_BITDOG_MODE 0
+
 /* 
     Definiçao para o display OLED
 */
@@ -22,6 +25,8 @@
 
 #define DHT_WINDOW_SIZE 10
 #define CURRENT_WINDOW_SIZE 10
+
+#define MOTOR_PIN 8
 
 const int CURRENT_PIN = 28;
 const int ADC_CHANNEL_2 = 2;

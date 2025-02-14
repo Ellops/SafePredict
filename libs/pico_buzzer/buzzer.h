@@ -4,7 +4,8 @@
 #include "pico/stdlib.h"
 
 void init_buzzer();
-void play_tone(uint pin, uint frequency, uint duration_ms);
+void play_alarm(uint pin, uint frequency);
+void stop_alarm(uint pin);
 
 #endif
  

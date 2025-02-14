@@ -53,7 +53,8 @@ const uint DHT_DATA_PIN = 17;
 
 dht_t dht;
 
-#if defined(SAFEPREDICT_ONLY_BITDOG_MODE)
+#if SAFEPREDICT_ONLY_BITDOG_MODE
+    #include <time.h>
     void update_dht() {
         float humidity_increment = ((rand() % 21) - 10) / 10.0;  // Random increment between -1.0 and 1.0
         float temperature_increment = ((rand() % 21) - 10) / 10.0; // Random increment between -1.0 and 1.0
@@ -65,9 +66,9 @@ dht_t dht;
         if (humidity < 0) humidity = 0;
         if (humidity > 100) humidity = 100;       
 
-        dht_result_t result = DHT_RESULT_OK
+        dht_result_t result = DHT_RESULT_OK;
         if (result == DHT_RESULT_OK) {
-            temperature_buffer[temperature_index_window] = temperature_c;
+            temperature_buffer[temperature_index_window] = temperature;
             temperature_index_window = (temperature_index_window + 1) % DHT_WINDOW_SIZE;
         
             float sum = 0;
@@ -153,7 +154,31 @@ dht_t dht;
     }
 #endif
 
+bool motor_status = true;
+
+int init_motor(){
+    static const float DIVIDER_PWM = 16.0;
+    static const uint16_t PERIOD = 4096;
+    gpio_set_function(MOTOR_PIN, GPIO_FUNC_PWM);
+    uint slice = pwm_gpio_to_slice_num(MOTOR_PIN);  
+    pwm_set_clkdiv(slice, DIVIDER_PWM); 
+    pwm_set_wrap(slice, PERIOD);          
+    pwm_set_gpio_level(MOTOR_PIN, 0);       
+}
+
+void update_motor(){
+    if(motor_status){
+        pwm_set_gpio_level(MOTOR_PIN, 4096); 
+    }
+    else{
+        pwm_set_gpio_level(MOTOR_PIN, 0); 
+    }
+}
+
 int main(void){
+    #if defined(SAFEPREDICT_ONLY_BITDOG_MODE)
+    srand(time(NULL));
+    #endif
     stdio_init_all();
 
     printf("Starting All\n");
@@ -163,14 +188,13 @@ int main(void){
     init_sr04();
     init_mpu6050();
     dht_init(&dht, DHT_MODEL, pio0, DHT_DATA_PIN, true /* pull_up */);
+    init_motor();
     printf("All started\n");
     
     adc_init();
     adc_gpio_init(CURRENT_PIN);
 
     // wifi_start(WIFI_SSID,WIFI_PASSWORD);
-
-    // play_tone(BUZZER_PIN,400,800);
     
     // thing_send(2,"22");
 
@@ -195,10 +219,16 @@ int main(void){
         printf("Current:%f\n",smoothed_current);
 
         if(alarm_distance()){
+            update_motor();
+            motor_status = false;
             change_color(U32_RED);
+            play_alarm(21,400);
         }
         else{
+            motor_status = true;
             change_color(U32_GREEN);
+            update_motor();
+            stop_alarm(21);
         }
 
         sleep_ms(500);

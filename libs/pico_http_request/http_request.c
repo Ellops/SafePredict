@@ -10,7 +10,9 @@
  #include "lwip/altcp.h"
  #include "lwip/altcp_tls.h"
  #include "http_request.h"
- 
+
+ #define DEBUG_MODE_HTTP 0
+
  #ifndef HTTP_INFO
  #define HTTP_INFO printf
  #endif
@@ -150,7 +152,7 @@
     snprintf(url, buffer_size, "/update?api_key=%s&field%d=%s", THINGSPEAK_API_KEY, field, data);
 
     req.url = url;
-    if(SAFEPREDICT_DEBUG_MODE){
+    if(DEBUG_MODE_HTTP){
         req.headers_fn = http_client_header_print_fn;
         req.recv_fn = http_client_receive_print_fn;
     }
