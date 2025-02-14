@@ -65,50 +65,39 @@ static err_t http_connected_callback(void *arg, struct tcp_pcb *tpcb, err_t err)
     tcp_output(tpcb);
     tcp_recv(tpcb, http_recv_callback);
 
-    free(req);  // Free the allocated memory after use
+    free(req);
 
     return ERR_OK;
 }
 
 
-// Resolver DNS e conectar ao servidor
 static void dns_callback(const char *name, const ip_addr_t *ipaddr, void *callback_arg) {
     if (ipaddr) {
         printf("Endereço IP do ThingSpeak: %s\n", ipaddr_ntoa(ipaddr));
         tcp_client_pcb = tcp_new();
-        // Set the callback argument so that http_connected_callback receives our data
         tcp_arg(tcp_client_pcb, callback_arg);
         tcp_connect(tcp_client_pcb, ipaddr, THINGSPEAK_PORT, http_connected_callback);
     } else {
         printf("Falha na resolução de DNS\n");
-        free(callback_arg);  // Free the allocated memory on DNS failure
+        free(callback_arg);
     }
 }
 
 
 int thing_send(queue_entry_t data_send) {
-    // Allocate memory for the request data to ensure it stays valid
     queue_entry_t *req = malloc(sizeof(queue_entry_t));
     if (!req) {
         printf("Erro: Falha ao alocar memória para a requisição\n");
         return -1;
     }
-    *req = data_send;  // Copy the data into our allocated structure
+    *req = data_send;
 
-    /* 
-     * Initiate DNS resolution of THINGSPEAK_HOST.
-     * dns_gethostbyname() will either return:
-     *  - ERR_OK: if the IP is already cached/resolved (call dns_callback immediately)
-     *  - ERR_INPROGRESS: if the lookup is in progress (dns_callback will be called later)
-     *  - an error code otherwise.
-     */
     err_t err = dns_gethostbyname(THINGSPEAK_HOST, &server_ip, dns_callback, req);
     if (err == ERR_OK) {
-        // Host already resolved, so call the callback directly.
         dns_callback(THINGSPEAK_HOST, &server_ip, req);
     } else if (err != ERR_INPROGRESS) {
         printf("Erro ao resolver DNS: %d\n", err);
-        free(req);  // Free the allocated memory since we won't be using it
+        free(req);
         return -1;
     }
 

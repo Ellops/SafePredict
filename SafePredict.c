@@ -23,14 +23,12 @@
 ssd1306_t oled; 
 
 void init_oled() {
-    //Inicialização do I2c
     i2c_init(i2c1, 100 * 1000); 
     gpio_set_function(I2C_SDA_PIN, GPIO_FUNC_I2C); 
     gpio_set_function(I2C_SCL_PIN, GPIO_FUNC_I2C); 
     gpio_pull_up(I2C_SDA_PIN); 
     gpio_pull_up(I2C_SCL_PIN);
 
-    //Inicialização do OLED 
     ssd1306_init(&oled, OLED_WIDTH, OLED_HEIGHT, 0x3C, i2c1); 
     ssd1306_clear(&oled); 
     ssd1306_show(&oled); 
@@ -38,24 +36,20 @@ void init_oled() {
 
 void draw_menu(float temperature, float humidity, float current, float vibration) {
     ssd1306_clear(&oled);
-    // Maximum number of characters per line
-    int x = 0; // Starting at the beginning of each line
-    int y = 0; // Initial Y position (top of the screen)
+    int x = 0;
+    int y = 0;
 
-    // Line 1: Temperature
     char temp_str[20];
     snprintf(temp_str, sizeof(temp_str), "T: %.2fC, H: %.2f", temperature,humidity);
     ssd1306_draw_string(&oled, x, y, 1, temp_str);
-    y += FONT_HEIGHT + SPACING;  // Move to the next line
+    y += FONT_HEIGHT + SPACING;
 
 
-    // Line 3: Current
     char current_str[20];
     snprintf(current_str, sizeof(current_str), "Cur: %.2f A", current);
     ssd1306_draw_string(&oled, x, y, 1, current_str);
     y += FONT_HEIGHT + SPACING;
 
-    // Line 4: Vibration
     char vibration_str[20];
     snprintf(vibration_str, sizeof(vibration_str), "Vib: %.2f Mod", vibration);
     ssd1306_draw_string(&oled, x, y, 1, vibration_str);
@@ -70,9 +64,8 @@ dht_t dht;
 #if SAFEPREDICT_ONLY_BITDOG_MODE
     #include <time.h>
     void update_dht() {
-        float humidity_increment = ((rand() % 21) - 10) / 10.0;  // Random increment between -1.0 and 1.0
-        float temperature_increment = ((rand() % 21) - 10) / 10.0; // Random increment between -1.0 and 1.0
-    
+        float humidity_increment = ((rand() % 21) - 10) / 10.0; 
+        float temperature_increment = ((rand() % 21) - 10) / 10.0;
         
         float humidity = smoothed_humidity + humidity_increment;
         float temperature = smoothed_temperature + temperature_increment;
@@ -248,6 +241,7 @@ int main(void){
     init_oled();
     init_buzzer();
     init_RGB();
+    
     init_sr04();
     init_mpu6050();
     dht_init(&dht, DHT_MODEL, pio0, DHT_DATA_PIN, true);
@@ -261,15 +255,15 @@ int main(void){
     struct repeating_timer enqueue_timer;
     struct repeating_timer dequeue_timer;
 
-    add_repeating_timer_ms(18000, enqueue_timer_callback, NULL, &enqueue_timer);
-    add_repeating_timer_ms(20000, dequeue_timer_callback, NULL, &dequeue_timer);
+    add_repeating_timer_ms(15200, enqueue_timer_callback, NULL, &enqueue_timer);
+    add_repeating_timer_ms(15500, dequeue_timer_callback, NULL, &dequeue_timer);
 
     wifi_start(WIFI_SSID,WIFI_PASSWORD);
     
     while (1) {
         uint32_t current_time = to_ms_since_boot(get_absolute_time());
         
-        if (current_time - last_data_collection > 1000){
+        if (current_time - last_data_collection > TIME_TO_UPDATE_DATA){
             last_data_collection = current_time;
             update_vibration();
             update_current();
@@ -282,13 +276,13 @@ int main(void){
             deployed_breaks = 100;
             motor_status = false;
             change_color(U32_RED);
-            play_alarm(21,400);
+            play_alarm(BUZZ_PIN,FREQ_BUZZER);
         }
         else{
             motor_status = true;
             change_color(U32_GREEN);
             deploy_break();
-            stop_alarm(21);
+            stop_alarm(BUZZ_PIN);
         }
 
         sleep_ms(30);

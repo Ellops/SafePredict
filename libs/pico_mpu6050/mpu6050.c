@@ -4,6 +4,10 @@
 #include "math.h"
 #include "stdlib.h"
 
+#ifndef SAFEPREDICT_ONLY_BITDOG_MODE
+    #define SAFEPREDICT_ONLY_BITDOG_MODE 0
+#endif
+
 #define VIBRATION_WINDOW_SIZE 10
 static const int addr = 0x68;
 static float vibration_buffer[VIBRATION_WINDOW_SIZE] = {0};
@@ -60,6 +64,25 @@ void mpu6050_read_raw(int16_t accel[3], int16_t gyro[3], int16_t *temp) {
     *temp = buffer[0] << 8 | buffer[1];
 }
 
+#if SAFEPREDICT_ONLY_BITDOG_MODE
+void update_vibration() {
+    #include <time.h>
+    float ax = ((rand() % 21) - 10) / 10.0;  // Random increment between -1.0 and 1.0
+    float ay = ((rand() % 21) - 10) / 10.0; // Random increment between -1.0 and 1.0
+    float az = ((rand() % 21) - 10) / 10.0; // Random increment between -1.0 and 1.0
+
+    float vibration = sqrt(ax * ax + ay * ay + az * az) - 1.00;
+
+    vibration_buffer[vibration_index_window] = vibration;
+    vibration_index_window = (vibration_index_window + 1) % VIBRATION_WINDOW_SIZE;
+
+    float sum = 0;
+    for (int i = 0; i < VIBRATION_WINDOW_SIZE; i++) {
+        sum += vibration_buffer[i];
+    }
+    smoothed_vibration = sum / VIBRATION_WINDOW_SIZE;
+}
+#else
 void update_vibration() {
     int16_t *acceleration = (int16_t *)malloc(3 * sizeof(int16_t));
     int16_t *gyro = (int16_t *)malloc(3 * sizeof(int16_t));
@@ -88,3 +111,4 @@ void update_vibration() {
     free(acceleration);
     free(gyro);
 }
+#endif

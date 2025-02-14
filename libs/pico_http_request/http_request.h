@@ -1,9 +1,3 @@
-/**
- * Copyright (c) 2024 Raspberry Pi (Trading) Ltd.
- *
- * SPDX-License-Identifier: BSD-3-Clause
- */
-
  #ifndef HTTP_REQUEST_H
  #define HTTP_REQUEST_H
  

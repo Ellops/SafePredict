@@ -27,15 +27,11 @@ set(PICO_BOARD pico_w CACHE STRING "Board type")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
 project(SafePredict C CXX ASM)
 
-# Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
-
-# Add executable. Default name is the project name, version 0.1
 
 add_executable(SafePredict SafePredict.c )
 
@@ -43,7 +39,6 @@ set(ENV_FILE "${CMAKE_CURRENT_SOURCE_DIR}/config/.env")
 if(EXISTS ${ENV_FILE})
     file(READ ${ENV_FILE} ENV_CONTENTS)
 
-    # Extract values from .env (Regex-based)
     string(REGEX MATCH "WIFI_SSID=\"([^\"]+)\"" _ ${ENV_CONTENTS})
     set(WIFI_SSID ${CMAKE_MATCH_1})
 
@@ -62,7 +57,7 @@ target_compile_definitions(SafePredict PRIVATE
         )
 
 pico_set_program_name(SafePredict "SafePredict")
-pico_set_program_version(SafePredict "0.1")
+pico_set_program_version(SafePredict "0.8")
 
 target_include_directories(SafePredict PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
@@ -74,12 +69,10 @@ pico_enable_stdio_usb(SafePredict 1)
 
 add_subdirectory(libs/pico_http_request)
 add_subdirectory(libs/pico_wifi_manager)
-
 add_subdirectory(libs/pico_sr04)
 add_subdirectory(libs/pico_mpu6050)
 add_subdirectory(libs/pico_rgb_digital)
 add_subdirectory(libs/pico_buzzer)
-
 add_subdirectory(libs/pico-ssd1306)
 add_subdirectory(libs/dht)
 
@@ -88,13 +81,11 @@ target_link_libraries(SafePredict
             hardware_clocks
             hardware_pwm
             hardware_adc
-
             pico_ssd1306
             pico_mpu6050
             pico_rgb_digital
             pico_buzzer
             dht         
-            
             pico_wifi_manager
             pico_http_request
             pico_sr04

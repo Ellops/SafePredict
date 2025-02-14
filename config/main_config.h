@@ -1,5 +1,8 @@
+#ifndef SAFEPREDICT_ONLY_BITDOG_MODE
+    #define SAFEPREDICT_ONLY_BITDOG_MODE 0
+#endif
+
 #define SAFEPREDICT_DEBUG_MODE 1
-#define SAFEPREDICT_ONLY_BITDOG_MODE 0
 
 /* 
     Definiçao para o display OLED
@@ -23,10 +26,17 @@
 #define GET_CENTER_LINE(text_length) \
     ((OLED_WIDTH - (text_length) * ((FONT_WIDTH) + (SPACING))) / 2)
 
+
+#define TIME_TO_UPDATE_DATA 1000
+
+#define MOTOR_PIN 8
+
+#define BUZZ_PIN 21
+#define FREQ_BUZZER 400
+
 #define DHT_WINDOW_SIZE 10
 #define CURRENT_WINDOW_SIZE 10
 
-#define MOTOR_PIN 8
 
 const int CURRENT_PIN = 28;
 const int ADC_CHANNEL_2 = 2;
