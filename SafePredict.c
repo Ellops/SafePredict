@@ -1,27 +1,45 @@
-#include "main_config.h"
+#include "main_config.h" //Arquivo com definições referentes a este arquivo principal
 
-#include "pico/stdlib.h"
-#include "hardware/pwm.h"
-#include "hardware/clocks.h"
-#include "hardware/i2c.h"
-#include "hardware/adc.h"
-#include "pico/binary_info.h"
-#include "pico/util/queue.h"
+/*
+    Bibliotecas pertencentes ao STD do raspberry pico
+*/
+#include "pico/stdlib.h" //Funções básicas
+#include "pico/binary_info.h" //Tratamento a dados binarios
+#include "pico/util/queue.h" //Fila e movimentações com fila
+#include "hardware/pwm.h" //Definições de PWM
+#include "hardware/clocks.h" //Definições de timers e controle de clock
+#include "hardware/i2c.h" //Definições quanto a TWI ou i2c
+#include "hardware/adc.h" //Definições do conversor analógico digital
 
-#include "math.h"
+/*
+    Bibliotecas pertencentes ao STD do C
+*/
+#include "math.h" //Operações matemáticas não elementares
 
-#include "ssd1306.h"
-#include "distance_sr04.h"
-#include "dht.h"
-#include "rgb_digital.h"
-#include "mpu6050.h"
-#include "buzzer.h"
+/*
+    Bibliotecas externas a esse projeto(Desenvolvidas inteiramente por terceiros)
+*/
+#include "dht.h" //@vmilea
+#include "ssd1306.h" //@daschr
 
-#include "http_request.h"
-#include "wifi_manager.h"
+/*
+    Bibliotecas internas a esse projeto(Desenvolvidas para o projeto inteira ou parcialmente)
+*/
+#include "distance_sr04.h" //Leitura do sensor ultrasônico de distância (Inteiramente Projeto)
+#include "rgb_digital.h" //Iniciação e controle básicao digital do led RGB (Inteiramente Projeto)
+#include "mpu6050.h" //Leitura do sensor de posição mpu6050 (Parcialmente Projeto, baseada em exemplos PICO)
+#include "buzzer.h" //Controle do buzzer através de PWM (Inteiramente Projeto)
+#include "http_request.h" //Construção e controle requisições http (Parcialmente Projeto, baseada em exemplo @ProfIuriSouza)
+#include "wifi_manager.h" //Simplificação da conexão WIFI usando (Inteiramente Projeto)
 
+/*
+    Entidade principal do oled
+*/
 ssd1306_t oled; 
 
+/*
+    Função de inicialização do i2c e em seguida oled como definido pela biblioteca
+*/
 void init_oled() {
     i2c_init(i2c1, 100 * 1000); 
     gpio_set_function(I2C_SDA_PIN, GPIO_FUNC_I2C); 
@@ -34,7 +52,10 @@ void init_oled() {
     ssd1306_show(&oled); 
 } 
 
-void draw_menu(float temperature, float humidity, float current, float vibration) {
+/*
+    Uso de funções da biblioteca para demonstrar as informações do motor no oled
+*/
+void draw_data(float temperature, float humidity, float current, float vibration) {
     ssd1306_clear(&oled);
     int x = 0;
     int y = 0;
@@ -56,11 +77,18 @@ void draw_menu(float temperature, float humidity, float current, float vibration
     ssd1306_show(&oled);
 }
 
+/*
+    Estruturas necessárias pela biblioteca de DHT
+*/
 const dht_model_t DHT_MODEL = DHT11;
 const uint DHT_DATA_PIN = 17;
-
 dht_t dht;
-
+/*
+    Construção das funções que geram dados e filtram com uma média móvel, existindo
+    2 possibilidades atraves da flag SAFEPREDICT_ONLY_BITDOG_MODE:
+        -Dados retirados de sensores reais;
+        -Dados aleatórios de sensores fictícios para que ainda seja possível fazer os testes;
+*/
 #if SAFEPREDICT_ONLY_BITDOG_MODE
     #include <time.h>
     void update_dht() {
@@ -161,14 +189,23 @@ dht_t dht;
     }
 #endif
 
-bool motor_status = true;
-uint deployed_breaks = 0;
+/*
+    Definições para motor
+*/
+bool motor_status = true; //Status para o motor na aplicação
+uint deployed_breaks = 0; //Se os freios foram disparados antes do próximo envio
 
+/*
+    Função que inicia os GPIO responsáveis por freiar o motor
+*/
 int init_motor(){
     gpio_init(MOTOR_PIN);
     gpio_set_dir(MOTOR_PIN, GPIO_OUT);    
 }
 
+/*
+    Função que realiza um freio motor
+*/
 void deploy_break(){
     if(motor_status){
         gpio_put(MOTOR_PIN,0);
@@ -178,11 +215,18 @@ void deploy_break(){
     }
 }
 
-queue_t thingspeak_queue;
-queue_entry_t data_to_send;
-volatile bool send_data = false;
-volatile uint32_t last_data_collection = 0;
+/*
+    Criando uma fila de dados para melhor organização dos envios
+        queue_entry_t definido no arquivo lib/pico_http_request/http_request.h
+*/
+queue_t thingspeak_queue; //A fila que será iniciada
+queue_entry_t data_to_send; //Qual próximo dado a ser enviado ao thingspeak e em ql canal
+volatile bool send_data = false; //Flag que controla se é necessário enviar dados controlado por timers
+volatile uint32_t last_data_collection = 0; //Ultima vez que novos dados foram coletados
 
+/*
+    Função que coloca dados na fila dado um tipo de dados e um valor
+*/
 void enqueue_data(thingspeak_type_t type, float value) {
     queue_entry_t entry;
     entry.type = type;
@@ -191,6 +235,11 @@ void enqueue_data(thingspeak_type_t type, float value) {
         printf("Queue is full!\n");
     }
 }
+
+/*
+    Callback para o timer que coloca novos dados na fila com ações diferentes dependendo do dado
+    e sempre circulando entre os dados para respeitar o limite de 15 segundos entre 1 envio ao thingspeak
+*/
 
 bool enqueue_timer_callback(struct repeating_timer *t) {
     static int counter = 0;
@@ -226,6 +275,9 @@ bool enqueue_timer_callback(struct repeating_timer *t) {
     return true;
 }
 
+/*
+    Callback para o timer que controla e prepara o próximo envio que será feito em loop
+*/
 bool dequeue_timer_callback(struct repeating_timer *t) {
     queue_try_remove(&thingspeak_queue, &data_to_send);
     send_data = true;
@@ -234,65 +286,79 @@ bool dequeue_timer_callback(struct repeating_timer *t) {
 
 int main(void){
     #if defined(SAFEPREDICT_ONLY_BITDOG_MODE)
-    srand(time(NULL));
+    srand(time(NULL)); //Inicia um seed aleatório caso não tenhamos sensores presentes;
     #endif
-    stdio_init_all();
+    stdio_init_all(); //Inicia toda comunição serial
 
-    init_oled();
-    init_buzzer();
-    init_RGB();
+    /*
+        Todas funções de inicialização dos sistemas utilizados no código
+    */
+    init_oled(); //Inicia o sistema do OLED
+    init_buzzer(); //Inicia o sistema do buzzer
+    init_RGB(); //Inicia o sistema do LED RGB
     
-    init_sr04();
-    init_mpu6050();
-    dht_init(&dht, DHT_MODEL, pio0, DHT_DATA_PIN, true);
-    init_motor();
-    adc_init();
+    init_sr04(); //Inicia o sistema do sensor ultrassônico
+    init_mpu6050(); //Inicia o sistema do mpu(Acelerômetro, Giroscópio, Sensor temperatura chip)
+    dht_init(&dht, DHT_MODEL, pio0, DHT_DATA_PIN, true); //Inicia o DHT(Sensor temperatura e Umidade)
+    init_motor(); //Inicia o freio motor
+    //Inicia o ADC para o sistema responsável por medir corrente
+    adc_init(); 
     adc_gpio_init(CURRENT_PIN);
-    queue_init(&thingspeak_queue, sizeof(queue_entry_t), 10);
 
-    mpu6050_reset();
+    queue_init(&thingspeak_queue, sizeof(queue_entry_t), 10); //Inicia a fila com um tamanho de 10 arquivos
 
-    struct repeating_timer enqueue_timer;
-    struct repeating_timer dequeue_timer;
+    mpu6050_reset(); //Liga o MPU através de um reset nos registradores de controle
 
-    add_repeating_timer_ms(15200, enqueue_timer_callback, NULL, &enqueue_timer);
+    /*
+        Estruturas do SDK responsáveis por definir os timers
+    */
+    struct repeating_timer enqueue_timer; //Timer para colocar elementos na fila
+    struct repeating_timer dequeue_timer; //Timer para retirar elementos da fila
+
+    /*
+        Criação dos timer repitiveis indefinidamente ambos respeitando os 15 seg do thingspeak
+    */
+    add_repeating_timer_ms(15200, enqueue_timer_callback, NULL, &enqueue_timer);  
     add_repeating_timer_ms(15500, dequeue_timer_callback, NULL, &dequeue_timer);
 
-    wifi_start(WIFI_SSID,WIFI_PASSWORD);
+    wifi_start(WIFI_SSID,WIFI_PASSWORD); //Função que inicializa o WIFI e PASSWORD
     
     while (1) {
-        uint32_t current_time = to_ms_since_boot(get_absolute_time());
+        uint32_t current_time = to_ms_since_boot(get_absolute_time()); //Controle de tempo por timer global
         
+        //Forma não bloqueante de fazer update nos dados com um tempo "relaxado" próximo a TIME_TO_UPDATE_DATA
         if (current_time - last_data_collection > TIME_TO_UPDATE_DATA){
             last_data_collection = current_time;
-            update_vibration();
-            update_current();
-            update_dht();
-            draw_menu(smoothed_temperature,smoothed_humidity,smoothed_current,smoothed_vibration);
+            update_vibration(); //Faz update da vibração
+            update_current(); //Faz update do valor de corrente
+            update_dht(); //Faz update de Umidade e Temperatura
+            //Coloca todos valores atualizados no OLED
+            draw_data(smoothed_temperature,smoothed_humidity,smoothed_current,smoothed_vibration);
         }
-
+        
+        //Resposta de proteção automática
         if(alarm_distance()){
-            deploy_break();
-            deployed_breaks = 100;
-            motor_status = false;
-            change_color(U32_RED);
-            play_alarm(BUZZ_PIN,FREQ_BUZZER);
+            deploy_break(); //Ativa os freios
+            deployed_breaks = 100; //Adiciona Marcação par ao thingspeak
+            motor_status = false; //Supõe que o motor está parado
+            change_color(U32_RED); //Muda a cor do led para demonstrar perigo
+            play_alarm(BUZZ_PIN,FREQ_BUZZER); //Ativa alarme Para reforçar perigo
         }
         else{
-            motor_status = true;
-            change_color(U32_GREEN);
-            deploy_break();
-            stop_alarm(BUZZ_PIN);
+            motor_status = true; //Considera que motor voltou a funcionar
+            change_color(U32_GREEN); //Muda cor do led para demonstrar que o perigo passou
+            deploy_break();//Desativa os freios
+            stop_alarm(BUZZ_PIN);//Para o alarme para demonstrar que está seguro
         }
 
-        sleep_ms(30);
+        sleep_ms(30);//Pequeno delay para estabilidade
         if(send_data){
-            if(SAFEPREDICT_DEBUG_MODE) printf("\nSent: Type=%d, Value=%s\n", data_to_send.type, data_to_send.value);
-            thing_send(data_to_send);
-            send_data=false;
+            if(SAFEPREDICT_DEBUG_MODE) printf("\nSent: Type=%d, Value=%s\n", data_to_send.type, data_to_send.value); //Debug mostrando o próximo envio
+            thing_send(data_to_send); //envia por http os dados
+            send_data=false; //reseta a flag de envio
         }
     }
 
-    wifi_end();
+    wifi_end(); //Caso exista alguma falha reseta wifi por segurança
     return 0;
 }

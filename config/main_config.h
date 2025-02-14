@@ -1,3 +1,9 @@
+/*
+    Definição de Flags de controle
+        -Onlybitdog ativa o modo que não precisa de perifericos externos a placa
+        -Debug Mode ativa various outputs uteis
+*/
+
 #ifndef SAFEPREDICT_ONLY_BITDOG_MODE
     #define SAFEPREDICT_ONLY_BITDOG_MODE 0
 #endif
@@ -27,19 +33,27 @@
     ((OLED_WIDTH - (text_length) * ((FONT_WIDTH) + (SPACING))) / 2)
 
 
+/*
+    Definição da velocidade de remarcação interna dos sensores.
+*/
 #define TIME_TO_UPDATE_DATA 1000
 
+/*
+    Pino do freio, no exemplo utilizado como freio motor
+*/
 #define MOTOR_PIN 8
 
+/*
+    Pino do buzzer e frequência do sinal transmitido
+*/
 #define BUZZ_PIN 21
 #define FREQ_BUZZER 400
 
+/*
+    Dados para filtro de média móvel para reduzir erros das leituras
+*/
 #define DHT_WINDOW_SIZE 10
 #define CURRENT_WINDOW_SIZE 10
-
-
-const int CURRENT_PIN = 28;
-const int ADC_CHANNEL_2 = 2;
 
 float temperature_buffer[DHT_WINDOW_SIZE] = {0};
 int temperature_index_window = 0;
@@ -48,7 +62,16 @@ int humidity_index_window = 0;
 float current_buffer[CURRENT_WINDOW_SIZE] = {0};
 int current_index_window = 0;
 
-float smoothed_temperature = 0.0;
-float smoothed_humidity = 0.0;
-float smoothed_current = 0.0;
+/*
+    Definições do sensor de corrente utilizando o ADC_2
+*/
+const int CURRENT_PIN = 28;
+const int ADC_CHANNEL_2 = 2;
+
+/*
+    Variáveis globais filtradas
+*/
+float smoothed_temperature = 0.0; //Temperatura Imediações motor
+float smoothed_humidity = 0.0; //Umidade Imediações motor
+float smoothed_current = 0.0; //Corrente sendo utilizada pelo motor
 
