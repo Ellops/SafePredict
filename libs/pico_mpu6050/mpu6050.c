@@ -2,6 +2,7 @@
 
 #include "hardware/i2c.h"
 #include "math.h"
+#include "stdlib.h"
 
 #define VIBRATION_WINDOW_SIZE 10
 static const int addr = 0x68;
@@ -60,12 +61,18 @@ void mpu6050_read_raw(int16_t accel[3], int16_t gyro[3], int16_t *temp) {
 }
 
 void update_vibration() {
-    int16_t acceleration[3], gyro[3], temp;
+    int16_t *acceleration = (int16_t *)malloc(3 * sizeof(int16_t));
+    int16_t *gyro = (int16_t *)malloc(3 * sizeof(int16_t));
+    if (acceleration == NULL || gyro == NULL) {
+        return;
+    }
+
+    int16_t temp;
     mpu6050_read_raw(acceleration, gyro, &temp);
 
-    float ax = (acceleration[0]+240) / 16384.0;
-    float ay = (acceleration[1]-150) / 16384.0;
-    float az = (acceleration[2]+1876) / 16384.0;
+    float ax = (acceleration[0] + 240) / 16384.0;
+    float ay = (acceleration[1] - 150) / 16384.0;
+    float az = (acceleration[2] + 1876) / 16384.0;
 
     float vibration = sqrt(ax * ax + ay * ay + az * az) - 1.00;
 
@@ -77,4 +84,7 @@ void update_vibration() {
         sum += vibration_buffer[i];
     }
     smoothed_vibration = sum / VIBRATION_WINDOW_SIZE;
+
+    free(acceleration);
+    free(gyro);
 }
